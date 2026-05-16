@@ -3,9 +3,8 @@
 # ============================================
 # Get these from your Supabase project settings:
 # https://app.supabase.com
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
-SUPABASE_SERVICE_KEY="your-service-role-key"
+NEXT_PUBLIC_SUPABASE_URL=https://ayggvvenvprbrhmpthoj.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_1mE2ZmSzERh_vR_b6JkA7w_NxSepZJg
 
 # PostgreSQL Connection String from Supabase:
 # Go to: Project Settings → Database → Connection string → URI
