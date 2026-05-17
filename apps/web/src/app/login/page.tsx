@@ -2,19 +2,41 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Navigation from '@/components/Navigation'
+import axios from 'axios'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // TODO: Implement authentication
-    console.log('Login:', { email, password })
-    setIsLoading(false)
+    setError('')
+
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/login`, {
+        email,
+        password,
+      })
+
+      if (response.data.success) {
+        // Store token and user data
+        localStorage.setItem('token', response.data.data.token)
+        localStorage.setItem('user', JSON.stringify(response.data.data.user))
+        
+        // Redirect to dashboard
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Login failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -39,6 +61,11 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="email-address" className="block text-sm font-semibold text-gray-700 mb-2">

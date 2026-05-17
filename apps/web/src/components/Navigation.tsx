@@ -2,16 +2,25 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isAuthenticated, logout } = useAuth()
+  const router = useRouter()
 
   const navLinks = [
     { href: '/features', label: 'Fonctionnalités' },
     { href: '/pricing', label: 'Tarifs' },
     { href: '/about', label: 'À propos' },
   ]
+
+  const handleLogout = () => {
+    logout()
+    router.push('/')
+  }
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -42,18 +51,37 @@ export default function Navigation() {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link
-              href="/login"
-              className="text-gray-600 hover:text-green-600 font-medium transition-colors px-4 py-2"
-            >
-              Connexion
-            </Link>
-            <Link
-              href="/signup"
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg"
-            >
-              Commencer
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-gray-600 hover:text-green-600 font-medium transition-colors px-4 py-2"
+                >
+                  Tableau de bord
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="text-gray-600 hover:text-red-600 font-medium transition-colors px-4 py-2"
+                >
+                  Déconnexion
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-gray-600 hover:text-green-600 font-medium transition-colors px-4 py-2"
+                >
+                  Connexion
+                </Link>
+                <Link
+                  href="/signup"
+                  className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg"
+                >
+                  Commencer
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -83,20 +111,43 @@ export default function Navigation() {
               </Link>
             ))}
             <div className="pt-4 space-y-2">
-              <Link
-                href="/login"
-                className="block px-4 py-3 text-center text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl font-medium transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Connexion
-              </Link>
-              <Link
-                href="/signup"
-                className="block px-4 py-3 text-center bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-md"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Commencer
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="block px-4 py-3 text-center text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl font-medium transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Tableau de bord
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout()
+                      setIsMenuOpen(false)
+                    }}
+                    className="block w-full px-4 py-3 text-center text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors"
+                  >
+                    Déconnexion
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="block px-4 py-3 text-center text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl font-medium transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Connexion
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="block px-4 py-3 text-center bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-md"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Commencer
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

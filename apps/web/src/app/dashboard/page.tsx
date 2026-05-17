@@ -1,30 +1,86 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { FolderKanban, CheckSquare, Clock, TrendingUp, Plus, ArrowRight } from 'lucide-react'
+import { FolderKanban, CheckSquare, Clock, TrendingUp, Plus, ArrowRight, FileText } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import axios from 'axios'
 
-const recentProjects = [
-  { id: 1, name: 'Site Web E-commerce', status: 'En cours', progress: 65, tasks: 12, completed: 8 },
-  { id: 2, name: 'Application Mobile', status: 'En retard', progress: 40, tasks: 20, completed: 8 },
-  { id: 3, name: 'Campagne Marketing', status: 'Terminé', progress: 100, tasks: 15, completed: 15 },
-  { id: 4, name: 'Refonte UI/UX', status: 'En cours', progress: 25, tasks: 8, completed: 2 },
-]
+interface Project {
+  id: string
+  name: string
+  status: string
+  progress: number
+  tasks: any[]
+  completed: number
+}
 
-const stats = [
-  { name: 'Projets actifs', value: '12', icon: FolderKanban, color: 'bg-green-100 text-green-600', change: '+2 ce mois' },
-  { name: 'Tâches en cours', value: '47', icon: CheckSquare, color: 'bg-red-100 text-red-600', change: '+15 cette semaine' },
-  { name: 'Heures travaillées', value: '156h', icon: Clock, color: 'bg-green-100 text-green-600', change: '+12h cette semaine' },
-  { name: 'Productivité', value: '+23%', icon: TrendingUp, color: 'bg-red-100 text-red-600', change: '+5% vs dernier mois' },
-]
+interface Stats {
+  activeProjects: number
+  inProgressTasks: number
+  hoursWorked: number
+  productivity: number
+}
+
+interface StatItem {
+  name: string
+  value: string
+  icon: any
+  color: string
+  change: string
+}
 
 export default function DashboardPage() {
+  const { token, user } = useAuth()
+  const [recentProjects, setRecentProjects] = useState<Project[]>([])
+  const [stats, setStats] = useState<StatItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!token) return
+
+      try {
+        // Fetch projects
+        const projectsRes = await axios.get(`${API_URL}/projects`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (projectsRes.data.success) {
+          const projects = projectsRes.data.data
+          setRecentProjects(projects.slice(0, 4))
+          
+          // Calculate stats
+          const activeProjects = projects.filter((p: Project) => p.status !== 'Terminé').length
+          const allTasks = projects.flatMap((p: Project) => p.tasks)
+          const inProgressTasks = allTasks.filter((t: any) => t.status === 'En cours').length
+          
+          setStats([
+            { name: 'Projets actifs', value: String(activeProjects), icon: FolderKanban, color: 'bg-green-100 text-green-600', change: '+2 ce mois' },
+            { name: 'Tâches en cours', value: String(inProgressTasks), icon: CheckSquare, color: 'bg-red-100 text-red-600', change: '+15 cette semaine' },
+            { name: 'Heures travaillées', value: '156h', icon: Clock, color: 'bg-green-100 text-green-600', change: '+12h cette semaine' },
+            { name: 'Productivité', value: '+23%', icon: TrendingUp, color: 'bg-red-100 text-red-600', change: '+5% vs dernier mois' },
+          ])
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [token])
   return (
     <DashboardLayout>
       <div className="space-y-8">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-3xl p-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">Bienvenue, Andry!</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            Bienvenue, {user ? `${user.firstName}!` : 'Andry!'}
+          </h1>
           <p className="text-green-100 mb-6">Voici un aperçu de vos projets et activités.</p>
           <Link
             href="/dashboard/projects/new"
@@ -72,7 +128,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <span>{project.status}</span>
                     <span>•</span>
-                    <span>{project.completed}/{project.tasks} tâches</span>
+                    <span>{project.completed}/{project.tasks.length} tâches</span>
                   </div>
                 </div>
                 <div className="flex-shrink-0">

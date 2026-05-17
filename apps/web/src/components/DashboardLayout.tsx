@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, 
@@ -16,6 +17,7 @@ import {
   Search,
   Plus
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 const navLinks = [
   { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
@@ -29,6 +31,17 @@ const navLinks = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    router.push('/')
+  }
+
+  const userInitials = user ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() : 'AA'
+  const userName = user ? `${user.firstName} ${user.lastName}` : 'Andry Arthur'
+  const userEmail = user ? user.email : 'andry@madaproject.mg'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -106,20 +119,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold">AA</span>
+                <span className="text-white font-semibold">{userInitials}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 truncate">Andry Arthur</p>
-                <p className="text-sm text-gray-500 truncate">andry@madaproject.mg</p>
+                <p className="font-semibold text-gray-900 truncate">{userName}</p>
+                <p className="text-sm text-gray-500 truncate">{userEmail}</p>
               </div>
             </div>
-            <Link
-              href="/login"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all"
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all w-full"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-medium">Déconnexion</span>
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

@@ -1,35 +1,90 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { FolderKanban, Plus, Search, Filter, MoreVertical, Calendar, Users } from 'lucide-react'
+import { FolderKanban, Plus, Search, Filter, MoreVertical, Calendar, Users, CheckSquare } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import axios from 'axios'
 
-const projects = [
-  { id: 1, name: 'Site Web E-commerce', description: 'Développement plateforme vente en ligne', status: 'En cours', progress: 65, tasks: 12, completed: 8, team: 5, deadline: '2024-03-15' },
-  { id: 2, name: 'Application Mobile', description: 'App iOS et Android pour clients', status: 'En retard', progress: 40, tasks: 20, completed: 8, team: 8, deadline: '2024-02-28' },
-  { id: 3, name: 'Campagne Marketing', description: 'Lancement nouveau produit', status: 'Terminé', progress: 100, tasks: 15, completed: 15, team: 4, deadline: '2024-01-31' },
-  { id: 4, name: 'Refonte UI/UX', description: 'Amélioration interface utilisateur', status: 'En cours', progress: 25, tasks: 8, completed: 2, team: 3, deadline: '2024-04-30' },
-  { id: 5, name: 'Intégration API', description: 'Connexion services tiers', status: 'Planifié', progress: 0, tasks: 6, completed: 0, team: 2, deadline: '2024-05-15' },
-  { id: 6, name: 'Formation Équipe', description: 'Onboarding nouveaux membres', status: 'En cours', progress: 80, tasks: 10, completed: 8, team: 6, deadline: '2024-02-15' },
-]
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Terminé': return 'bg-green-100 text-green-700'
-    case 'En cours': return 'bg-green-100 text-green-700'
-    case 'En retard': return 'bg-red-100 text-red-700'
-    case 'Planifié': return 'bg-gray-100 text-gray-700'
-    default: return 'bg-gray-100 text-gray-700'
-  }
-}
-
-const getProgressColor = (progress: number) => {
-  if (progress === 100) return 'bg-green-500'
-  if (progress < 50) return 'bg-red-500'
-  return 'bg-green-500'
+interface Project {
+  id: string
+  name: string
+  description: string
+  status: string
+  progress: number
+  tasks: any[]
+  companyMemberships: any[]
+  deadline?: string
+  completed: number
+  team: number
 }
 
 export default function ProjectsPage() {
+  const { token } = useAuth()
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!token) return
+
+      try {
+        const response = await axios.get(`${API_URL}/projects`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (response.data.success) {
+          const projectsData = response.data.data.map((p: any) => ({
+            ...p,
+            completed: p.tasks?.filter((t: any) => t.status === 'Terminé').length || 0,
+            team: p.companyMemberships?.length || 0,
+          }))
+          setProjects(projectsData)
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProjects()
+  }, [token])
+
+  const filteredProjects = projects.filter(project =>
+    project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.description.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Terminé': return 'bg-green-100 text-green-700'
+      case 'En cours': return 'bg-green-100 text-green-700'
+      case 'En retard': return 'bg-red-100 text-red-700'
+      case 'Planifié': return 'bg-gray-100 text-gray-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getProgressColor = (progress: number) => {
+    if (progress === 100) return 'bg-green-500'
+    if (progress < 50) return 'bg-red-500'
+    return 'bg-green-500'
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Chargement...</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -55,6 +110,8 @@ export default function ProjectsPage() {
             <input
               type="text"
               placeholder="Rechercher un projet..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
             />
           </div>
@@ -66,7 +123,7 @@ export default function ProjectsPage() {
 
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <Link
               key={project.id}
               href={`/dashboard/projects/${project.id}`}
@@ -107,7 +164,7 @@ export default function ProjectsPage() {
                 <div className="flex items-center justify-between text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <CheckSquare className="w-4 h-4" />
-                    <span>{project.completed}/{project.tasks} tâches</span>
+                    <span>{project.completed}/{project.tasks.length} tâches</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="w-4 h-4" />
@@ -115,14 +172,33 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 text-sm text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>{new Date(project.deadline).toLocaleDateString('fr-FR')}</span>
-                </div>
+                {project.deadline && (
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>{new Date(project.deadline).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                )}
               </div>
             </Link>
           ))}
         </div>
+
+        {filteredProjects.length === 0 && (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FolderKanban className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Aucun projet trouvé</h3>
+            <p className="text-gray-600 mb-6">Créez votre premier projet pour commencer</p>
+            <Link
+              href="/dashboard/projects/new"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-lg"
+            >
+              <Plus className="w-5 h-5" />
+              Créer un projet
+            </Link>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

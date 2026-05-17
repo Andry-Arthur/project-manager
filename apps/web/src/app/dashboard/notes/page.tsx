@@ -1,25 +1,64 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FileText, Plus, Search, Calendar, Clock, MoreVertical, Trash2, Edit } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import axios from 'axios'
 
-const notes = [
-  { id: 1, title: 'Réunion équipe projet', content: 'Points discutés: avancement e-commerce, deadline mobile app...', project: 'Site Web E-commerce', createdAt: '2024-02-10', updatedAt: '2024-02-12' },
-  { id: 2, title: 'Idées nouvelles fonctionnalités', content: 'Ajouter: dark mode, export PDF, intégration Slack...', project: 'Application Mobile', createdAt: '2024-02-08', updatedAt: '2024-02-08' },
-  { id: 3, title: 'Notes client meeting', content: 'Client satisfait du design, demande modification couleur...', project: 'Refonte UI/UX', createdAt: '2024-02-05', updatedAt: '2024-02-06' },
-  { id: 4, title: 'Checklist déploiement', content: '1. Tests unitaires 2. Tests intégration 3. Documentation...', project: 'Site Web E-commerce', createdAt: '2024-02-03', updatedAt: '2024-02-10' },
-  { id: 5, title: 'Ressources utiles', content: 'Liens documentation, outils recommandés, best practices...', project: 'Formation Équipe', createdAt: '2024-02-01', updatedAt: '2024-02-01' },
-]
+interface Note {
+  id: string
+  title: string
+  content: string
+  project?: { id: string; name: string }
+  createdAt: string
+  updatedAt: string
+}
 
 export default function NotesPage() {
+  const { token } = useAuth()
+  const [notes, setNotes] = useState<Note[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (!token) return
+
+      try {
+        const response = await axios.get(`${API_URL}/notes`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (response.data.success) {
+          setNotes(response.data.data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch notes:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchNotes()
+  }, [token])
 
   const filteredNotes = notes.filter(note =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Chargement...</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
@@ -70,11 +109,13 @@ export default function NotesPage() {
               <p className="text-gray-600 text-sm mb-4 line-clamp-3">{note.content}</p>
 
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium">
-                    {note.project}
-                  </span>
-                </div>
+                {note.project && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium">
+                      {note.project.name}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <div className="flex items-center gap-1">
@@ -125,7 +166,9 @@ export default function NotesPage() {
                 <Calendar className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">3</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {notes.filter(n => new Date(n.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                </div>
                 <div className="text-gray-600 text-sm">Cette semaine</div>
               </div>
             </div>
@@ -136,7 +179,9 @@ export default function NotesPage() {
                 <Clock className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">2</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {notes.filter(n => new Date(n.updatedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                </div>
                 <div className="text-gray-600 text-sm">Mises à jour</div>
               </div>
             </div>

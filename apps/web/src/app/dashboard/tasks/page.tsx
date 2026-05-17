@@ -1,43 +1,93 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CheckSquare, Plus, Search, Filter, Calendar, Flag, MoreVertical, Circle } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { useAuth } from '@/contexts/AuthContext'
+import axios from 'axios'
 
-const tasks = [
-  { id: 1, title: 'Finaliser maquette homepage', project: 'Site Web E-commerce', priority: 'Haute', status: 'En cours', dueDate: '2024-02-15', assignee: 'AA' },
-  { id: 2, title: 'Intégrer API de paiement', project: 'Site Web E-commerce', priority: 'Haute', status: 'À faire', dueDate: '2024-02-20', assignee: 'SR' },
-  { id: 3, title: 'Tests utilisateurs mobile', project: 'Application Mobile', priority: 'Moyenne', status: 'En cours', dueDate: '2024-02-18', assignee: 'KA' },
-  { id: 4, title: 'Documentation technique', project: 'Application Mobile', priority: 'Basse', status: 'À faire', dueDate: '2024-03-01', assignee: 'VR' },
-  { id: 5, title: 'Optimiser performances', project: 'Refonte UI/UX', priority: 'Moyenne', status: 'Terminé', dueDate: '2024-02-10', assignee: 'AA' },
-  { id: 6, title: 'Créer guide utilisateur', project: 'Formation Équipe', priority: 'Basse', status: 'En cours', dueDate: '2024-02-25', assignee: 'SR' },
-]
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'Haute': return 'bg-red-100 text-red-700'
-    case 'Moyenne': return 'bg-green-100 text-green-700'
-    case 'Basse': return 'bg-gray-100 text-gray-700'
-    default: return 'bg-gray-100 text-gray-700'
-  }
-}
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Terminé': return 'bg-green-100 text-green-700'
-    case 'En cours': return 'bg-green-100 text-green-700'
-    case 'À faire': return 'bg-gray-100 text-gray-700'
-    default: return 'bg-gray-100 text-gray-700'
-  }
+interface Task {
+  id: string
+  title: string
+  status: string
+  priority: string
+  dueDate?: string
+  project: { id: string; name: string }
+  assignees: Array<{ id: string; firstName: string; lastName: string }>
 }
 
 export default function TasksPage() {
-  const [selectedTasks, setSelectedTasks] = useState<number[]>([])
+  const { token } = useAuth()
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const toggleTask = (taskId: number) => {
-    setSelectedTasks(prev => 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!token) return
+
+      try {
+        const response = await axios.get(`${API_URL}/tasks`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (response.data.success) {
+          setTasks(response.data.data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch tasks:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchTasks()
+  }, [token])
+
+  const toggleTask = (taskId: string) => {
+    setSelectedTasks(prev =>
       prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    )
+  }
+
+  const filteredTasks = tasks.filter(task =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.project.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'Haute': return 'bg-red-100 text-red-700'
+      case 'Moyenne': return 'bg-green-100 text-green-700'
+      case 'Basse': return 'bg-gray-100 text-gray-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Terminé': return 'bg-green-100 text-green-700'
+      case 'En cours': return 'bg-green-100 text-green-700'
+      case 'À faire': return 'bg-gray-100 text-gray-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getAssigneeInitials = (assignees: Task['assignees']) => {
+    if (assignees.length === 0) return 'NA'
+    return assignees.map(a => `${a.firstName[0]}${a.lastName[0]}`).join(', ')
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Chargement...</div>
+        </div>
+      </DashboardLayout>
     )
   }
 
@@ -63,6 +113,8 @@ export default function TasksPage() {
             <input
               type="text"
               placeholder="Rechercher une tâche..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
             />
           </div>
@@ -94,7 +146,7 @@ export default function TasksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {tasks.map((task) => (
+                {filteredTasks.map((task) => (
                   <tr key={task.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <input
@@ -122,7 +174,7 @@ export default function TasksPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-gray-600">{task.project}</span>
+                      <span className="text-gray-600">{task.project.name}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(task.priority)}`}>
@@ -135,14 +187,16 @@ export default function TasksPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>{new Date(task.dueDate).toLocaleDateString('fr-FR')}</span>
-                      </div>
+                      {task.dueDate && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          <span>{new Date(task.dueDate).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-semibold">{task.assignee}</span>
+                        <span className="text-white text-xs font-semibold">{getAssigneeInitials(task.assignees)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -157,6 +211,20 @@ export default function TasksPage() {
           </div>
         </div>
 
+        {filteredTasks.length === 0 && (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckSquare className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Aucune tâche trouvée</h3>
+            <p className="text-gray-600 mb-6">Créez votre première tâche pour commencer</p>
+            <button className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all shadow-lg">
+              <Plus className="w-5 h-5" />
+              Créer une tâche
+            </button>
+          </div>
+        )}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-lg">
@@ -165,7 +233,7 @@ export default function TasksPage() {
                 <CheckSquare className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">24</div>
+                <div className="text-2xl font-bold text-gray-900">{tasks.length}</div>
                 <div className="text-gray-600 text-sm">Tâches totales</div>
               </div>
             </div>
@@ -176,7 +244,7 @@ export default function TasksPage() {
                 <Flag className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">8</div>
+                <div className="text-2xl font-bold text-gray-900">{tasks.filter(t => t.priority === 'Haute').length}</div>
                 <div className="text-gray-600 text-sm">Haute priorité</div>
               </div>
             </div>
@@ -187,7 +255,7 @@ export default function TasksPage() {
                 <Circle className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">12</div>
+                <div className="text-2xl font-bold text-gray-900">{tasks.filter(t => t.status === 'Terminé').length}</div>
                 <div className="text-gray-600 text-sm">Terminées</div>
               </div>
             </div>

@@ -2,9 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Navigation from '@/components/Navigation'
+import axios from 'axios'
 
 export default function SignupPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -14,13 +17,36 @@ export default function SignupPage() {
     phone: '',
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // TODO: Implement registration
-    console.log('Signup:', formData)
-    setIsLoading(false)
+    setError('')
+
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/register`, {
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone || undefined,
+        language: 'FRENCH',
+      })
+
+      if (response.data.success) {
+        // Store token in localStorage
+        localStorage.setItem('token', response.data.data.token)
+        localStorage.setItem('user', JSON.stringify(response.data.data.user))
+        
+        // Redirect to dashboard
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Registration failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +78,11 @@ export default function SignupPage() {
               </p>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-4">
                 <div>
